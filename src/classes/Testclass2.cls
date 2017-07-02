@@ -1,3 +1,3 @@
-public with sharing class Testclass2 {
+public class Testclass2 {
     
 }
