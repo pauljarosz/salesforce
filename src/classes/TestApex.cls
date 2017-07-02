@@ -3,4 +3,9 @@ public class TestApex {
 	{
 		return true;
 	}
+
+    public void hi()
+    {
+      
+    }
 }
