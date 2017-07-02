@@ -6,7 +6,7 @@ public class TestApex {
 
     public void hi()
     {
-      
+         integer x;      
     }
 <<<<<<< Upstream, based on branch 'testbranch' of git@github.com:pauljarosz/salesforce.git
 =======
