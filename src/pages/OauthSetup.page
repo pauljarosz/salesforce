@@ -1,0 +1,55 @@
+<apex:page controller="OauthSetupController" action="{!getTokenAction}">
+    <apex:form id="form">
+	   	<apex:actionFunction name="changeServerAF" action="{!changeServer}" rerender="form" />
+	   	
+        <apex:pageBlock title="Salesforce Oauth Setup">
+            <apex:pageBlockSection >
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Servers" for="servers" />
+                    <apex:selectList id="servers" value="{!Name}" size="1" onchange="changeServerAF();" >
+                        <apex:selectOptions value="{!servers}"/>
+                    </apex:selectList>
+                </apex:pageBlockSectionItem>
+                                
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Environment" for="environment" />
+                    <apex:selectList id="environment" value="{!Server.Environment__c}" size="1" >
+                        <apex:selectOptions value="{!environments}"/>
+                    </apex:selectList>
+                </apex:pageBlockSectionItem>
+                    
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Name" for="name" />
+                    <apex:inputField id="name" value="{!Server.Name}" />
+                </apex:pageBlockSectionItem>
+                
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Consumer Key" for="consumerKey" />
+                    <apex:inputField id="consumerKey" value="{!Server.Consumer_Key__c}" />
+                </apex:pageBlockSectionItem>
+
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Consumer Secret" for="consumer_secret" />
+                    <apex:inputField id="consumer_secret" value="{!Server.Consumer_Secret__c}" />
+                </apex:pageBlockSectionItem>
+                
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Redirect Url" />
+                    <apex:outputLabel value="{!CallbackUrl}" />
+                </apex:pageBlockSectionItem>
+                
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Instance Url" />
+                    <apex:outputLabel value="{!Server.Instance_Url__c}" />
+                </apex:pageBlockSectionItem>
+            </apex:pageBlockSection>
+
+			<apex:pageBlockButtons>
+                <apex:commandButton action="{!getAuthRedirection}" value="Authorize" />
+                <apex:commandButton action="{!newAction}" value="New" rerender="form" />
+                <apex:commandButton action="{!saveAction}" value="Save" rerender="form" />
+                <apex:commandButton action="{!deleteAction}" value="Delete" rerender="form" />
+			</apex:pageBlockButtons>
+        </apex:pageBlock>
+    </apex:form>
+</apex:page>
