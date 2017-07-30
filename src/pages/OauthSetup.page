@@ -44,7 +44,7 @@
                 </apex:pageBlockSectionItem>
             </apex:pageBlockSection>
 
-			<apex:pageBlockButtons>
+			<apex:pageBlockButtons >
                 <apex:commandButton action="{!getAuthRedirection}" value="Authorize" />
                 <apex:commandButton action="{!newAction}" value="New" rerender="form" />
                 <apex:commandButton action="{!saveAction}" value="Save" rerender="form" />

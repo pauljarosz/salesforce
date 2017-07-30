@@ -4,14 +4,37 @@ public class SalesforceOauthClient {
 	final public static string PROD_ENDPOINT = 'https://login.salesforce.com';
 	final public static string SANDBOX_ENDPOINT = 'https://test.salesforce.com';
 	
+	public Salesforce_Oauth__c m_Server;
+	
 	public class OauthException extends Exception {}
+	
+	public SalesforceOauthClient()
+	{
+		m_Server = null;
+	}
 	
 	static public Salesforce_Oauth__c getServer(String sName)
 	{
 		return Salesforce_Oauth__c.getInstance(sName);
 	}
 	
-	static public string getEndpoint(Salesforce_Oauth__c server)
+	public void setServer(Salesforce_Oauth__c server)
+	{
+		m_Server = server;
+	}
+
+	public boolean load(String sName)
+	{
+		m_Server = Salesforce_Oauth__c.getInstance(sName);
+		
+		if (m_Server == null) {
+			return false;
+		}
+		
+		return true;
+	}
+	
+	static public string getLoginEndpoint(Salesforce_Oauth__c server)
 	{
 		if (server.Environment__c.equalsIgnoreCase(ENV_PROD_DEV)) {
 			return PROD_ENDPOINT;
@@ -22,52 +45,88 @@ public class SalesforceOauthClient {
 		throw new OauthException('Invalid Environment');
 	}
 	
-	static public string getAuthorizeLink(Salesforce_Oauth__c server, String sRedirectUrl)
+	public string getAuthorizeLink(String sRedirectUrl)
 	{
-		return getEndpoint(server) + '/services/oauth2/authorize?response_type=code' +
-			'&client_id=' + EncodingUtil.urlEncode(server.Consumer_Key__c, 'UTF-8') +
-			'&client_secret=' + EncodingUtil.urlEncode('826459854415633146', 'UTF-8') +
-			'&state=' + EncodingUtil.urlEncode(server.name, 'UTF-8') +
-			'&redirect_uri=' + EncodingUtil.urlEncode(sRedirectUrl, 'UTF-8')		
+		if (m_Server == null) {
+			return null;
+		}
+		
+		return getLoginEndpoint(m_Server) + '/services/oauth2/authorize?response_type=code' +
+			'&client_id=' + EncodingUtil.urlEncode(m_Server.Consumer_Key__c, 'UTF-8') +
+			'&client_secret=' + EncodingUtil.urlEncode(m_Server.Consumer_Secret__c, 'UTF-8') +
+			'&state=' + EncodingUtil.urlEncode(m_Server.name, 'UTF-8') +
+			'&redirect_uri=' + EncodingUtil.urlEncode(sRedirectUrl, 'UTF-8') +
+			'&code_challenge=' + base64UrlEncode(Crypto.generateDigest('SHA-256', Blob.valueOf(m_Server.Code_Verifier__c)))
 			;
 	}
 	
-    static public void getToken(Salesforce_Oauth__c server, String sRedirectUrl, String sCode)
-    {
-    	String sUrl = getEndpoint(server) + '/services/oauth2/token?grant_type=authorization_code' +
-			'&client_id=' + EncodingUtil.urlEncode(server.Consumer_Key__c, 'UTF-8') +
+    public void getToken(String sRedirectUrl, String sCode)
+    {    	
+    	String sUrl = getLoginEndpoint(m_Server) + '/services/oauth2/token?grant_type=authorization_code' +
+			'&client_id=' + EncodingUtil.urlEncode(m_Server.Consumer_Key__c, 'UTF-8') +
 			'&client_secret=' + EncodingUtil.urlEncode('826459854415633146', 'UTF-8') +
 			'&code=' + EncodingUtil.urlEncode(sCode, 'UTF-8') +
-			'&redirect_uri=' + EncodingUtil.urlEncode(sRedirectUrl, 'UTF-8')		
-			;        HttpRequest request = new HttpRequest();
+			'&redirect_uri=' + EncodingUtil.urlEncode(sRedirectUrl, 'UTF-8') +
+			'&code_verifier=' + m_Server.Code_Verifier__c		
+			;
+			
+		HttpRequest request = new HttpRequest();
 
-		system.debug(sUrl);
-        request.setEndpoint(sUrl);
+		request.setEndpoint(sUrl);
         request.setMethod('GET');
         request.setTimeout(60000);
 
 		HttpResponse response = new Http().send(request);
-		System.debug(response.getBody());
+		
 		Map<String, Object> mapJson = (Map<String, Object>) JSON.deserializeUntyped(response.getBody());
-		system.debug(mapJson);
+		
 		if (mapJson.containsKey('error')) {
 			throw new OauthException((String) mapJson.get('error_description'));
 		}
 		
 		if (mapJson.containsKey('access_token')) {
-			server.Access_Token__c = (String) mapJson.get('access_token');
+			m_Server.Access_Token__c = (String) mapJson.get('access_token');
 		}
 
 		if (mapJson.containsKey('refresh_token')) {
-			server.Access_Token__c = (String) mapJson.get('refresh_token');
+			m_Server.Access_Token__c = (String) mapJson.get('refresh_token');
 		}
 		
 		if (mapJson.containsKey('instance_url')) {
-			server.Instance_Url__c = (String) mapJson.get('instance_url');
+			m_Server.Instance_Url__c = (String) mapJson.get('instance_url');
 		}
 		
-		system.debug(server);
-
-		upsert server;
+		upsert m_Server;
+    }
+    
+    public void generateCodeVerifier()
+    {
+    	List<String> lstHexDigits = new List<String>{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+    	
+    	String sRandom = '';
+    	for (Integer i = 0; i < 128; i++) {
+    		sRandom += lstHexDigits[Math.abs(Math.mod(Crypto.getRandomInteger(), 16))];
+    		sRandom += lstHexDigits[Math.abs(Math.mod(Crypto.getRandomInteger(), 16))];
+    	}
+    	
+		m_Server.Code_Verifier__c = base64UrlEncode(EncodingUtil.convertFromHex(sRandom));
+    }
+    
+    /**
+     * encode a url according to this docs
+     * https://tools.ietf.org/html/rfc4648#section-5
+     */
+    public string base64UrlEncode(Blob b)
+    {
+    	String s = EncodingUtil.base64Encode(b).trim();
+    	
+    	while (s.endsWith('=')) {
+    		s = s.removeEnd('=');
+    	}
+    	
+    	s = s.replace('+', '-');
+    	s = s.replace('/', '_');
+    	
+    	return s;
     }
 }
