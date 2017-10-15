@@ -3,7 +3,7 @@ public class OauthSetupController {
 	public String Name {get; set /*{	 	Server = new Salesforce_Oauth__c(Name = this.Name); }*/; }
 	public Salesforce_Oauth__c Server {get; set;}
 	public String CallbackUrl { get { return URL.getSalesforceBaseUrl().toExternalForm() + Page.OauthSetup.getUrl(); } }
-	SalesforceOauthClient m_OauthClient;
+	public SalesforceOauthClient m_OauthClient {get; set;}
 	
 	public OauthSetupController()
 	{
